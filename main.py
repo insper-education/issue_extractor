@@ -8,7 +8,7 @@ import os
 
 def get_repo_grades():
     output = os.system("gh classroom assignment-grades")
-    if not os.file.exists("grades.csv"):
+    if not os.path.exists("grades.csv"):
         return False
     return True
 
