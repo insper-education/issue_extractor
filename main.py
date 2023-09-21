@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import subprocess
 import csv
 import json
@@ -15,13 +14,10 @@ def get_repo_grades():
 
 def extract_repo_from_grades():
     repos = []
-    with open("grades.csv", newline="") as csvfile:
+    with open("grades.csv", encoding="utf8", newline="") as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            repos.append(
-                {"user": row["roster_identifier"], "url": row["student_repository_url"]}
-            )
-
+            repos.append( {"user": row["roster_identifier"], "url": row["student_repository_url"]} )            
     return repos
 
 
