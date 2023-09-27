@@ -4,34 +4,31 @@ import json
 from tqdm import tqdm
 import os
 
-
 def get_repo_grades():
     output = os.system("gh classroom assignment-grades")
     if not os.path.exists("grades.csv"):
         return False
     return True
 
-
 def extract_repo_from_grades():
     repos = []
-    with open("grades.csv", encoding="utf8", newline="") as csvfile:
+    with open("grades.csv", encoding="utf-8", newline="") as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            repos.append( {"user": row["roster_identifier"], "url": row["student_repository_url"]} )            
+            repos.append({"user": row["roster_identifier"], "url": row["student_repository_url"]})
     return repos
-
 
 def extract_issues(repo):
     data = {}
     output = subprocess.check_output(
-        ["gh", "issue", "list", "-R", repo["url"], "--json", "title,state"]
+        ["gh", "issue", "list", "-R", repo["url"], "--json", "title,state"],
+        encoding="utf-8"
     )
     issues = json.loads(output)
 
     data["name"] = repo
     data["issues"] = issues
     return data
-
 
 def export_csv(data):
     # find issues titles
@@ -59,10 +56,9 @@ def export_csv(data):
         csv_data.append(row)
 
     # Write to CSV
-    with open("issues.csv", "w", newline="") as f:
+    with open("issues.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerows(csv_data)
-
 
 if __name__ == "__main__":
     if not get_repo_grades():
