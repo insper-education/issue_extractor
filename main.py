@@ -3,6 +3,8 @@ import csv
 import json
 from tqdm import tqdm
 import os
+from collections import defaultdict
+
 
 def get_repo_grades():
     output = os.system("gh classroom assignment-grades")
@@ -10,48 +12,77 @@ def get_repo_grades():
         return False
     return True
 
+
 def extract_repo_from_grades():
     repos = []
     with open("grades.csv", encoding="utf-8", newline="") as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            repos.append({"user": row["roster_identifier"], "url": row["student_repository_url"]})
+            repos.append(
+                {"user": row["roster_identifier"], "url": row["student_repository_url"]}
+            )
     return repos
 
-def extract_issues(repo):
+
+def extract_issues_actions(repo):
     data = {}
     output = subprocess.check_output(
         ["gh", "issue", "list", "-R", repo["url"], "--json", "title,state"],
-        encoding="utf-8"
+        encoding="utf-8",
     )
     issues = json.loads(output)
 
+    actions_output = subprocess.check_output(
+        ["gh", "run", "list", "-R", repo["url"], "--json", "name,conclusion"]
+    )
+    actions = json.loads(actions_output)
+
+    latest_runs = {}
+    for action in actions:
+        if action["name"] not in latest_runs:
+            latest_runs[action["name"]] = action["conclusion"].upper()
+
+    data["actions"] = latest_runs
     data["name"] = repo
     data["issues"] = issues
+
     return data
+
 
 def export_csv(data):
     # find issues titles
     issues_head = []
+    actions_head = []
     for repo in data:
         for issue in repo["issues"]:
             if issue["title"] not in issues_head:
-                print(issue["title"])
                 issues_head.append(issue["title"])
+
+    for action in repo["actions"].keys():
+        if action not in actions_head:
+            actions_head.append(action)
 
     # Prepare CSV data
     csv_data = []
-    headers = ["user"] + ["url"] + issues_head
+    headers = ["user"] + ["url"] + actions_head + issues_head
     csv_data.append(headers)
 
     for repo in data:
-        a = dict.fromkeys(issues_head, "CLOSED")
+        data_dict = dict.fromkeys(issues_head, "CLOSED")
+        actions_dict = dict.fromkeys(actions_head, "")
+
         row = [repo["name"]["user"], repo["name"]["url"]]
         for issue in repo["issues"]:
-            a[issue["title"]] = issue["state"]
+            data_dict[issue["title"]] = issue["state"]
 
-        for key in a:
-            row.append(a[key])
+        for action in repo["actions"].keys():
+            actions_dict[action] = repo["actions"][action]
+
+        for key in actions_dict:
+            row.append(actions_dict[key])
+
+        for key in data_dict:
+            row.append(data_dict[key])
 
         csv_data.append(row)
 
@@ -59,6 +90,7 @@ def export_csv(data):
     with open("issues.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerows(csv_data)
+
 
 if __name__ == "__main__":
     if not get_repo_grades():
@@ -68,6 +100,6 @@ if __name__ == "__main__":
 
     data = []
     for repo in tqdm(repos):
-        data.append(extract_issues(repo))
+        data.append(extract_issues_actions(repo))
 
     export_csv(data)
