@@ -3,7 +3,7 @@ import csv
 import json
 from tqdm import tqdm
 import os
-from collections import defaultdict
+import sys
 
 
 def get_repo_grades():
@@ -21,7 +21,8 @@ def extract_repo_from_grades():
             repos.append(
                 {"user": row["roster_identifier"], "url": row["student_repository_url"]}
             )
-    return repos
+            assignment_name = row["assignment_name"]
+    return assignment_name, repos
 
 
 def extract_issues_actions(repo):
@@ -33,14 +34,15 @@ def extract_issues_actions(repo):
     issues = json.loads(output)
 
     actions_output = subprocess.check_output(
-        ["gh", "run", "list", "-R", repo["url"], "--json", "name,conclusion"]
+        ["gh", "run", "list", "-R", repo["url"], "--json", "workflowName,conclusion"],
+        encoding="utf-8",
     )
     actions = json.loads(actions_output)
 
     latest_runs = {}
     for action in actions:
-        if action["name"] not in latest_runs:
-            latest_runs[action["name"]] = action["conclusion"].upper()
+        if action["workflowName"] not in latest_runs:
+            latest_runs[action["workflowName"]] = action["conclusion"].upper()
 
     data["actions"] = latest_runs
     data["name"] = repo
@@ -49,7 +51,7 @@ def extract_issues_actions(repo):
     return data
 
 
-def export_csv(data):
+def export_csv(assgiment_name, data):
     # find issues titles
     issues_head = []
     actions_head = []
@@ -87,7 +89,7 @@ def export_csv(data):
         csv_data.append(row)
 
     # Write to CSV
-    with open("issues.csv", "w", newline="", encoding="utf-8") as f:
+    with open(f"{assignment_name}.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerows(csv_data)
 
@@ -96,10 +98,12 @@ if __name__ == "__main__":
     if not get_repo_grades():
         print("Fail to download grade.csv")
 
-    repos = extract_repo_from_grades()
+    assignment_name, repos = extract_repo_from_grades()
 
+    print("Extracting data from repos...")
     data = []
     for repo in tqdm(repos):
         data.append(extract_issues_actions(repo))
 
-    export_csv(data)
+    print(f"Exporting data to CSV: {assignment_name}.csv...")
+    export_csv(assignment_name, data)
