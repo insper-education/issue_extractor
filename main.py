@@ -60,9 +60,9 @@ def export_csv(assgiment_name, data):
             if issue["title"] not in issues_head:
                 issues_head.append(issue["title"])
 
-    for action in repo["actions"].keys():
-        if action not in actions_head:
-            actions_head.append(action)
+        for action in repo["actions"]:
+            if action not in actions_head:
+                actions_head.append(action)
 
     # Prepare CSV data
     csv_data = []
@@ -77,7 +77,7 @@ def export_csv(assgiment_name, data):
         for issue in repo["issues"]:
             data_dict[issue["title"]] = issue["state"]
 
-        for action in repo["actions"].keys():
+        for action in repo["actions"]:
             actions_dict[action] = repo["actions"][action]
 
         for key in actions_dict:
